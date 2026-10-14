@@ -1,0 +1,113 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edarecover"
+version = "0.4.0"
+description = "Recoverability boundaries for electrodermal activity under motion artifacts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nuray Doskaliyeva" }]
+keywords = ["electrodermal activity", "motion artifact", "signal quality", "wearables"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Source = "https://github.com/ndoskaliyeva/eda-recoverability"
+Issues = "https://github.com/ndoskaliyeva/eda-recoverability/issues"
+
+[project.scripts]
+edarecover = "edarecover.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+edarecover = ["py.typed"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "N",         # pep8-naming
+    "D",         # pydocstyle
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "S",         # bandit
+    "SIM",       # simplify
+    "ARG",       # unused arguments
+    "PTH",       # use pathlib
+    "RUF",       # ruff-specific
+]
+ignore = [
+    "N803",  # argument names such as A, Y, L follow the paper's notation
+    "N806",  # likewise for locals
+    "D105",  # magic methods are self-describing here
+    "D107",  # __init__ documented on the class
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D103", "S101"]  # test names are the documentation; assert is the point
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["edarecover"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr"]
+
+[[tool.mypy.overrides]]
+module = ["scipy.*", "sklearn.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+markers = ["slow: recomputes the full sweep; deselect with -m 'not slow'"]
+
+[tool.coverage.run]
+source = ["edarecover"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["src"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
