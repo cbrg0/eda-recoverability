@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edarecover.cli import COMMANDS, build_parser, main, quick
+from edarecover.cli import COMMANDS, DEFAULT_CACHE, build_parser, main, quick
 from edarecover.config import DEFAULT
 
 
@@ -20,6 +20,25 @@ def test_every_subcommand_is_reachable_from_the_parser():
 def test_a_missing_subcommand_is_an_error():
     with pytest.raises(SystemExit):
         build_parser().parse_args([])
+
+
+def test_global_flags_are_accepted_before_the_subcommand():
+    # argparse resolves options against the parser that owns them, so the
+    # global flags come first, as in "git -C dir status". A flag placed after
+    # the subcommand is rejected rather than silently ignored.
+    args = build_parser().parse_args(["-v", "--quick", "calibrate"])
+    assert args.verbose and args.quick
+
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["calibrate", "-v"])
+
+
+def test_omitted_global_flags_keep_their_defaults():
+    args = build_parser().parse_args(["calibrate"])
+    assert args.verbose is False
+    assert args.json is False
+    assert args.quick is False
+    assert args.cache == DEFAULT_CACHE
 
 
 def test_quick_mode_shrinks_the_sweep():

@@ -41,8 +41,10 @@ edarecover --quick calibrate
 The published figures need the full sweep, which takes a few minutes and is
 cached afterwards:
 
+Global flags go before the subcommand, as in `git -C dir status`:
+
 ```bash
-edarecover calibrate -v         # fit the threshold, write data/runs.npz
+edarecover -v calibrate         # fit the threshold, write data/runs.npz
 edarecover validate             # leave one seed out
 edarecover coupling             # sweep the assumed pressure coupling
 edarecover mismatch             # invert with a deliberately wrong operator
