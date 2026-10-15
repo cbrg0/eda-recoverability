@@ -76,12 +76,12 @@ def band_coherence(recording: Array, envelope: Array, settings: Settings) -> flo
     )
     low, high = settings.band_hz
     in_band = (freqs >= low) & (freqs <= high)
-    if not in_band.any():
+    if not np.any(in_band):
         raise ValueError(
             f"band {settings.band_hz} Hz holds no bin at resolution "
             f"{settings.frequency_resolution_hz:.4f} Hz; lengthen segment_s"
         )
-    return float(coherence[in_band].mean())
+    return float(np.mean(coherence[in_band]))
 
 
 def coherence_per_window(

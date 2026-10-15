@@ -83,7 +83,7 @@ def clean_signal(
     tonic = (
         TONIC_LEVEL_US
         + TONIC_SWING_US * np.sin(2 * np.pi * t / (duration_s * 1.3))
-        + TONIC_DRIFT_US * rng.standard_normal(n).cumsum() / fs
+        + TONIC_DRIFT_US * np.cumsum(rng.standard_normal(n)) / fs
     )
 
     n_events = rng.poisson(scr_per_minute * duration_s / 60.0)

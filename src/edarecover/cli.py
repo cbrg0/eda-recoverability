@@ -84,7 +84,7 @@ def calibrate(args: argparse.Namespace, settings: Settings) -> Payload:
 
     return {
         "runs": len(runs),
-        "needing_correction": int(labels.sum()),
+        "needing_correction": int(np.sum(labels)),
         "threshold": fitted.value,
         "auc": fitted.auc,
         "sensitivity": fitted.sensitivity,

@@ -30,10 +30,11 @@ def movement_severity(acc: Array, fs: float) -> Array:
     """
     window = max(1, int(SEVERITY_SMOOTH_S * fs))
     smoothed: Array = np.convolve(np.abs(acc), np.ones(window) / window, mode="same")
-    spread = float(smoothed.max() - smoothed.min())
+    lowest = float(np.min(smoothed))
+    spread = float(np.max(smoothed)) - lowest
     if spread < 1e-12:
         return np.zeros_like(smoothed)
-    severity: Array = (smoothed - smoothed.min()) / spread
+    severity: Array = (smoothed - lowest) / spread
     return severity
 
 

@@ -79,9 +79,11 @@ class CrossValidation:
 def _rates(predicted: IntArray, actual: IntArray) -> tuple[float, float, float]:
     """Sensitivity, specificity and accuracy, with NaN where a class is absent."""
     positive, negative = actual == 1, actual == 0
-    sensitivity = float(predicted[positive].mean()) if positive.any() else np.nan
-    specificity = float(1 - predicted[negative].mean()) if negative.any() else np.nan
-    return sensitivity, specificity, float((predicted == actual).mean())
+    sensitivity = float(np.mean(predicted[positive])) if np.any(positive) else np.nan
+    specificity = (
+        float(1 - np.mean(predicted[negative])) if np.any(negative) else np.nan
+    )
+    return sensitivity, specificity, float(np.mean(predicted == actual))
 
 
 def cross_validate(runs: RunSet, settings: Settings) -> CrossValidation:
@@ -204,12 +206,12 @@ def coupling_sweep(
         points.append(
             CouplingPoint(
                 beta_per_blur=beta,
-                n_positive=int(labels.sum()),
+                n_positive=int(np.sum(labels)),
                 threshold=threshold,
                 auc=auc,
-                coherence_at_zero_blur=float(values[blur == 0.0].mean()),
+                coherence_at_zero_blur=float(np.mean(values[blur == 0.0])),
                 coherence_at_max_blur=float(
-                    values[blur == max(settings.blur_levels)].mean()
+                    np.mean(values[blur == max(settings.blur_levels)])
                 ),
             )
         )
@@ -361,7 +363,7 @@ def decimation_invariance(settings: Settings, factor: int = 4) -> DecimationChec
         low=low_arr,
         threshold_high=youden_threshold(high_arr, labels),
         threshold_low=youden_threshold(low_arr, labels),
-        max_abs_difference=float(np.abs(low_arr - high_arr).max()),
+        max_abs_difference=float(np.max(np.abs(low_arr - high_arr))),
         correlation=float(np.corrcoef(high_arr, low_arr)[0, 1]),
     )
 
