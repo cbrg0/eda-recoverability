@@ -69,7 +69,8 @@ def remove_additive_trace(recording: Array, envelope: Array) -> Array:
     """
     design = np.column_stack([envelope, np.ones(len(recording))])
     coefficients, *_ = np.linalg.lstsq(design, recording, rcond=None)
-    return recording - design @ coefficients + coefficients[1]
+    cleaned: Array = recording - design @ coefficients + coefficients[1]
+    return cleaned
 
 
 def tikhonov(

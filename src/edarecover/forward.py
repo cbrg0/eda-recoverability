@@ -29,11 +29,12 @@ def movement_severity(acc: Array, fs: float) -> Array:
         gives all zeros rather than a division by zero.
     """
     window = max(1, int(SEVERITY_SMOOTH_S * fs))
-    smoothed = np.convolve(np.abs(acc), np.ones(window) / window, mode="same")
-    spread = smoothed.max() - smoothed.min()
+    smoothed: Array = np.convolve(np.abs(acc), np.ones(window) / window, mode="same")
+    spread = float(smoothed.max() - smoothed.min())
     if spread < 1e-12:
         return np.zeros_like(smoothed)
-    return (smoothed - smoothed.min()) / spread
+    severity: Array = (smoothed - smoothed.min()) / spread
+    return severity
 
 
 def blur_operator(acc: Array, fs: float, max_blur_s: float) -> sparse.csr_matrix:
@@ -101,7 +102,8 @@ def observe(
     Returns:
         Recorded conductance, microsiemens.
     """
-    return operator @ signal + blur_s * beta_per_blur * envelope + noise
+    observed: Array = operator @ signal + blur_s * beta_per_blur * envelope + noise
+    return observed
 
 
 def effective_rank(

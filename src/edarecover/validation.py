@@ -190,12 +190,12 @@ def coupling_sweep(
                 before.append(reconstruct.rmse(recording, clean))
                 blur_of.append(blur_s)
 
-        coherence = np.asarray(coherence)
-        blur_of = np.asarray(blur_of)
+        values = np.asarray(coherence, dtype=np.float64)
+        blur = np.asarray(blur_of, dtype=np.float64)
         labels = (np.asarray(before) > settings.rmse_tolerance).astype(int)
 
         try:
-            fitted = youden_threshold(coherence, labels)
+            fitted = youden_threshold(values, labels)
             threshold, auc = fitted.value, fitted.auc
         except ValueError:
             log.info("coupling %.3f leaves one class empty", beta)
@@ -207,9 +207,9 @@ def coupling_sweep(
                 n_positive=int(labels.sum()),
                 threshold=threshold,
                 auc=auc,
-                coherence_at_zero_blur=float(coherence[blur_of == 0.0].mean()),
+                coherence_at_zero_blur=float(values[blur == 0.0].mean()),
                 coherence_at_max_blur=float(
-                    coherence[blur_of == max(settings.blur_levels)].mean()
+                    values[blur == max(settings.blur_levels)].mean()
                 ),
             )
         )
