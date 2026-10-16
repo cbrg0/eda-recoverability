@@ -17,7 +17,7 @@ can evaluate while it is recording. A recording is modelled as a discrete linear
 inverse problem,
 
 ```
-Y = A(acc) @ S + beta * env(acc) + noise
+Y = A(acc) * S + beta * env(acc) + noise
 ```
 
 where `A` blurs the signal with a width that grows with movement intensity and
