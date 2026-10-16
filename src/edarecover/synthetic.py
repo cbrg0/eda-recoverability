@@ -1,9 +1,13 @@
 """Synthetic electrodermal signals and wrist motion.
 
 The clean signal is a slow tonic level carrying phasic responses of Bateman
-shape; the parameterisation follows Alexander et al. (2005). Motion is a
-background tremor plus Gaussian-windowed bursts in the 1-3 Hz range of walking
-and gesturing.
+shape. The two-exponential form is standard in the decomposition literature
+(Benedek & Kirchner, 2010); the time constants below were chosen to place the
+peak at 1.18 s and the 1 % return at 11.3 s, and they are not taken from a
+published table. Motion is a background tremor plus Gaussian-windowed bursts in
+the 1-3 Hz range of walking and gesturing.
+
+See docs/method.md sections 4 and 5 for every constant with its provenance.
 """
 
 from __future__ import annotations
@@ -102,6 +106,12 @@ def motion(duration_s: float, fs: float, seed: int, n_bursts: int = 8) -> Array:
 
     The seed is offset by one relative to :func:`clean_signal` so that a run
     identified by a single seed gets an independent signal and motion pair.
+
+    Known defect: an offset of one makes the tremor of run ``k`` the same white
+    noise realisation as the tonic drift increments of run ``k + 1``, because
+    both open a generator in the same state. The fix is a larger offset, and it
+    is deferred because it moves the calibrated threshold. See docs/method.md
+    section 4.5.
 
     Args:
         duration_s: Length of the recording, s.
