@@ -69,10 +69,11 @@ introduced again, with its value, at the step where it first does something.
 | `σ_n` | standard deviation of the measurement noise | µS |
 | `C_B` | band-limited magnitude-squared coherence, the observable | dimensionless |
 | `θ` | decision threshold on `C_B` | dimensionless |
-| `L` | second-difference operator, an `(N−2) × N` matrix | dimensionless |
+| `L` | second-difference operator, an `(N-2) × N` matrix | dimensionless |
 | `λ` | Tikhonov regularisation parameter | dimensionless |
-| `ŝ` | estimate of `s` produced by the reconstruction | µS |
-| `τ` | error tolerance separating recoverable from unrecoverable | µS |
+| `τ_1`, `τ_2` | rise and decay time constants of a phasic response | s |
+| `S_hat` | estimate of `s` produced by the reconstruction | µS |
+| `δ` | error tolerance separating recoverable from unrecoverable | µS |
 | `k` | number of singular values above the noise floor | dimensionless |
 
 ---
@@ -111,8 +112,8 @@ Every run begins by constructing a time axis, because every subsequent quantity
 is a function evaluated on it. The axis holds `N` evenly spaced samples,
 
 ```
-N   = round(T · f_s)
-t_n = n / f_s          for n = 0, 1, …, N − 1
+N   = round(T * f_s)
+t_n = n / f_s          for n = 0, 1, ..., N - 1
 ```
 
 and with the default window length of 240 s at 16 Hz this gives `N` = 3840
@@ -124,7 +125,7 @@ later in the pipeline are matrices, and matrices need positions.
 |---|---|---|---|---|
 | `T` | window length | s | 240 | chosen for this study, see below |
 | `f_s` | sampling rate | Hz | 16 | chosen to sit between the Empatica E4 conductance and accelerometer rates |
-| `N` | samples per window | dimensionless | 3840 | derived, `round(T · f_s)` |
+| `N` | samples per window | dimensionless | 3840 | derived, `round(T * f_s)` |
 
 The window length was chosen to be long enough that a Welch spectral estimate
 over the band of interest averages over more than twenty segments, which section
@@ -148,7 +149,7 @@ The baseline, written `s_tonic`, is the sum of a constant level, one slow
 sinusoid, and a random walk:
 
 ```
-s_tonic(t_n) = L₀ + L₁ · sin(2π t_n / (1.3 T)) + L₂ · (1/f_s) · Σ_{k=0}^{n} z_k
+s_tonic(t_n) = g_0 + g_1 * sin(2π t_n / (1.3 T)) + g_2 * (1/f_s) * sum[k = 0..n] z_k
 ```
 
 where the `z_k` are independent standard normal draws. The period of the
@@ -163,9 +164,9 @@ baseline's behaviour unchanged if the sampling rate is changed.
 
 | Symbol | Meaning | Unit | Default | Source |
 |---|---|---|---|---|
-| `L₀` | mean tonic level | µS | 3.0 | chosen; inside the range commonly reported for resting recordings |
-| `L₁` | amplitude of the slow sinusoid | µS | 0.5 | chosen for this study |
-| `L₂` | random-walk scale | µS | 0.05 | chosen for this study |
+| `g_0` | mean tonic level | µS | 3.0 | chosen; inside the range commonly reported for resting recordings |
+| `g_1` | amplitude of the slow sinusoid | µS | 0.5 | chosen for this study |
+| `g_2` | random-walk scale | µS | 0.05 | chosen for this study |
 | `z_k` | standard normal increments | dimensionless | drawn | `rng.standard_normal(N)` |
 
 These three constants are the author's choices and are not taken from any
@@ -182,18 +183,18 @@ Each individual skin conductance response is generated from the two-exponential
 Bateman form, which rises on one time constant and decays on a slower one:
 
 ```
-s_scr(t; t₀, α) = α · [ exp(−(t − t₀)/τ₂) − exp(−(t − t₀)/τ₁) ]    for t > t₀
-s_scr(t; t₀, α) = 0                                                otherwise
+s_scr(t; t_0, α) = α * [ exp(-(t - t_0)/τ_2) - exp(-(t - t_0)/τ_1) ]    for t > t_0
+s_scr(t; t_0, α) = 0                                                otherwise
 ```
 
 and the result is clipped at zero from below, so no response ever contributes a
 negative conductance. The functional form is standard and is the impulse
 response assumed by the decomposition methods cited above. The specific time
-constants are the author's choice, and the reasoning runs as follows. With `τ₁` =
-0.75 s and `τ₂` = 2.0 s the response reaches its maximum at
+constants are the author's choice, and the reasoning runs as follows. With `τ_1` =
+0.75 s and `τ_2` = 2.0 s the response reaches its maximum at
 
 ```
-t_peak = (τ₁ τ₂ / (τ₂ − τ₁)) · ln(τ₂ / τ₁) = 1.18 s
+t_peak = (τ_1 τ_2 / (τ_2 - τ_1)) * ln(τ_2 / τ_1) = 1.18 s
 ```
 
 and it falls back below one per cent of that maximum 11.3 s after onset, which
@@ -212,9 +213,9 @@ and 0.208 µS.
 
 | Symbol | Meaning | Unit | Default | Source |
 |---|---|---|---|---|
-| `τ₁` | rise time constant | s | 0.75 | chosen; places the peak at 1.18 s, inside the reported 1–3 s |
-| `τ₂` | decay time constant | s | 2.0 | chosen; places the 1 % return at 11.3 s |
-| `t₀` | onset time of one response | s | drawn `U(0, T)` | chosen distribution |
+| `τ_1` | rise time constant | s | 0.75 | chosen; places the peak at 1.18 s, inside the reported 1–3 s |
+| `τ_2` | decay time constant | s | 2.0 | chosen; places the 1 % return at 11.3 s |
+| `t_0` | onset time of one response | s | drawn `U(0, T)` | chosen distribution |
 | `α` | amplitude scale factor | µS | drawn `U(0.05, 0.6)` | chosen; gives peaks of 0.017–0.208 µS |
 | `λ_scr` | mean response rate | per minute | 4.0 | chosen; inside the 1–10 per minute reported for resting adults |
 | `N_scr` | number of responses in a window | dimensionless | drawn `Poisson(λ_scr T / 60)` | chosen distribution |
@@ -230,7 +231,7 @@ separately for each seed, partly for that reason.
 The clean signal is then the sum of the baseline and all the responses,
 
 ```
-s(t_n) = s_tonic(t_n) + Σ_{j=1}^{N_scr} s_scr(t_n; t₀ⱼ, αⱼ)
+s(t_n) = s_tonic(t_n) + sum[j = 1..N_scr] s_scr(t_n; t_0j, α_j)
 ```
 
 and this array, in microsiemens, is the ground truth against which every error
@@ -268,7 +269,7 @@ every digit.
 The practical effect is that the tremor component of run `k` and the random-walk
 increments of run `k + 1` are the same realisation of white noise, for five of
 the six seeds. Both quantities are small (`σ_tr` = 0.02 in arbitrary
-accelerometer units, `L₂` = 0.05 µS per unit time), they enter the pipeline
+accelerometer units, `g_2` = 0.05 µS per unit time), they enter the pipeline
 through different channels, and no reported statistic has been shown to move
 because of the overlap. It remains a defect, and it appears here in the main text
 rather than in a footnote.
@@ -290,7 +291,7 @@ low-amplitude tremor present throughout and a small number of louder bursts
 standing in for episodes of walking or gesturing:
 
 ```
-a(t_n) = σ_tr · w_n + Σ_{j=1}^{J} Aⱼ · exp( −0.5 ((t_n − cⱼ) / (wⱼ/2))² ) · sin(2π fⱼ t_n)
+a(t_n) = σ_tr * w_n + sum[j = 1..J] q_j * exp( -0.5 ((t_n - c_j) / (w_j/2))^2 ) * sin(2π f_j t_n)
 ```
 
 where the `w_n` are independent standard normal draws. Each burst is a sinusoid
@@ -306,10 +307,10 @@ choices.
 |---|---|---|---|---|
 | `σ_tr` | tremor standard deviation | arbitrary | 0.02 | chosen for this study |
 | `J` | number of bursts per window | dimensionless | 8 | chosen for this study |
-| `cⱼ` | burst centre time | s | drawn `U(0.05 T, 0.95 T)` | chosen; keeps bursts away from the window edges |
-| `wⱼ` | burst duration | s | drawn `U(3, 15)` | chosen for this study |
-| `fⱼ` | burst frequency | Hz | drawn `U(1, 3)` | walking and gesture cadence |
-| `Aⱼ` | burst amplitude | arbitrary | drawn `U(0.5, 2.5)` | chosen for this study |
+| `c_j` | burst centre time | s | drawn `U(0.05 T, 0.95 T)` | chosen; keeps bursts away from the window edges |
+| `w_j` | burst duration | s | drawn `U(3, 15)` | chosen for this study |
+| `f_j` | burst frequency | Hz | drawn `U(1, 3)` | walking and gesture cadence |
+| `q_j` | burst amplitude | arbitrary | drawn `U(0.5, 2.5)` | chosen for this study |
 | `w_n` | tremor increments | dimensionless | drawn | `rng.standard_normal(N)` |
 
 The units of this trace are arbitrary, and that is a real limitation rather than
@@ -341,7 +342,7 @@ The first is the movement envelope, a moving average of the absolute
 acceleration over a window of `W_e` samples:
 
 ```
-e(t_n) = (1/W_e) · Σ_i |a(t_{n−i})|          W_e = round(T_e · f_s)
+e(t_n) = (1/W_e) * sum[i] |a(t_(n-i))|          W_e = round(T_e * f_s)
 ```
 
 implemented as `np.convolve(np.abs(acc), np.ones(W_e)/W_e, mode="same")`. This
@@ -354,11 +355,11 @@ The second is the movement severity, a shorter moving average rescaled onto the
 unit interval:
 
 ```
-m_raw(t_n) = (1/W_m) · Σ_i |a(t_{n−i})|      W_m = max(1, ⌊T_m · f_s⌋)
-m(t_n)     = (m_raw(t_n) − min m_raw) / (max m_raw − min m_raw)
+m_raw(t_n) = (1/W_m) * sum[i] |a(t_(n-i))|      W_m = max(1, floor(T_m * f_s))
+m(t_n)     = (m_raw(t_n) - min m_raw) / (max m_raw - min m_raw)
 ```
 
-and if the denominator falls below 10⁻¹² the function returns zeros instead of
+and if the denominator falls below 1e-12 the function returns zeros instead of
 dividing, which is what happens for a trace with no variation at all. Severity
 exists only to set the local width of the blur operator in the next section,
 where what is needed is a normalised measure of where the movement is strongest,
@@ -370,7 +371,7 @@ individual bursts rather than being flattened across them.
 | `T_e` | envelope smoothing length | s | 2.0 | chosen; keeps the envelope inside the analysis band |
 | `W_e` | envelope smoothing length in samples | dimensionless | 32 | derived, `round(T_e f_s)` |
 | `T_m` | severity smoothing length | s | 0.5 | chosen; tracks individual bursts |
-| `W_m` | severity smoothing length in samples | dimensionless | 8 | derived, `⌊T_m f_s⌋` |
+| `W_m` | severity smoothing length in samples | dimensionless | 8 | derived, `floor(T_m f_s)` |
 | `e` | movement envelope | arbitrary | computed | used by sections 8 and 10 |
 | `m` | movement severity | dimensionless, [0, 1] | computed | used by section 7 |
 
@@ -398,16 +399,16 @@ average whose width grows where the movement is strongest. Row `i` of the
 operator holds a Gaussian kernel centred on sample `i`:
 
 ```
-Ã_ij = exp( −0.5 ((j − i) / σ_i)² )         for |j − i| ≤ H, and 0 otherwise
-A_ij = Ã_ij / Σ_{j'} Ã_ij'
+A_raw_ij = exp( -0.5 ((j - i) / σ_i)^2 )         for |j - i| <= H, and 0 otherwise
+A_ij = A_raw_ij / sum[j'] A_raw_ij'
 ```
 
 with the local width set by the severity computed in the previous section,
 
 ```
-σ_i   = σ_min + m(t_i) · (σ_max − σ_min)
-σ_max = max(σ_min, b · f_s)
-H     = ⌈3 σ_max⌉
+σ_i   = σ_min + m(t_i) * (σ_max - σ_min)
+σ_max = max(σ_min, b * f_s)
+H     = ceil(3 σ_max)
 ```
 
 The row normalisation in the second line is what makes this operator a blur
@@ -421,7 +422,7 @@ unit tests in `tests/test_forward.py`.
 | `b` | blur width, the distortion parameter | s | swept, see below | chosen sweep range |
 | `σ_min` | kernel width where movement is absent | samples | 0.5 | chosen; the smallest width that is not a delta |
 | `σ_max` | kernel width where movement is strongest | samples | `max(0.5, b f_s)` | derived |
-| `H` | kernel half-width | samples | `⌈3 σ_max⌉` | chosen; a 3σ truncation retains 99.7 % of the kernel |
+| `H` | kernel half-width | samples | `ceil(3 σ_max)` | chosen; a 3σ truncation retains 99.7 % of the kernel |
 | `A` | blur operator | dimensionless | `N × N` sparse | computed |
 
 The operator is held as a `scipy.sparse.csr_matrix` and not as a dense array,
@@ -446,7 +447,7 @@ conductance of its own, and the model represents that as a term proportional to
 both the movement envelope and the blur width:
 
 ```
-y_pressure(t_n) = b · β · e(t_n)
+y_pressure(t_n) = b * β * e(t_n)
 ```
 
 This term is the reason the distortion is detectable at all. The blur operator
@@ -476,7 +477,7 @@ measured on a bench.
 The third term is independent Gaussian noise added to every sample,
 
 ```
-ε_n ~ N(0, σ_n²)
+ε_n ~ N(0, σ_n^2)
 ```
 
 with `σ_n` = 0.01 µS. The value stands for quantisation and amplifier noise in a
@@ -499,7 +500,7 @@ here and pinned by a regression test.
 | Symbol | Meaning | Unit | Default | Source |
 |---|---|---|---|---|
 | `σ_n` | measurement noise standard deviation | µS | 0.01 | chosen; the author's estimate of consumer sensor noise |
-| `ε` | noise realisation | µS | drawn | `σ_n · rng.standard_normal(N)` |
+| `ε` | noise realisation | µS | drawn | `σ_n * rng.standard_normal(N)` |
 
 ---
 
@@ -517,7 +518,7 @@ is explained, frequency by frequency, by the movement envelope. That is
 magnitude-squared coherence:
 
 ```
-C(f) = |P_ye(f)|² / ( P_yy(f) · P_ee(f) )
+C(f) = |P_ye(f)|^2 / ( P_yy(f) * P_ee(f) )
 ```
 
 where `P_yy` and `P_ee` are the power spectral densities of the recording and the
@@ -530,7 +531,7 @@ The estimate is then averaged over a band rather than used frequency by
 frequency:
 
 ```
-C_B = (1/|F_B|) · Σ_{f ∈ F_B} C(f),        F_B = { f : 0.045 Hz ≤ f ≤ 0.25 Hz }
+C_B = (1/|F_B|) * sum[f in F_B] C(f),        F_B = { f : 0.045 Hz <= f <= 0.25 Hz }
 ```
 
 The band is not an arbitrary choice. Posada-Quintero et al. (2016) identified
@@ -594,30 +595,43 @@ be recovered by any method whatsoever. Counting the survivors is the discrete
 Picard condition of Hansen (1990):
 
 ```
-k(b) = # { i : σ_i(A) > σ_n · σ₁(A) }
+k(b) = count{ i : σ_i(A) > 0.01 * σ_1(A) }
 ```
 
-where the `σ_i(A)` are the singular values in descending order. The count is
-reported as a fraction of the full rank, which is the proportion of signal
-directions that remain informative.
+where the `σ_i(A)` are the singular values in descending order. The threshold is
+one per cent of the largest singular value, which is a relative quantity; it
+happens to coincide numerically with `σ_n` = 0.01 µS, and the coincidence is
+arithmetic rather than physical, so the two should not be read as the same
+thing. The count is reported as a fraction of the full rank, which is the
+proportion of signal directions that remain informative.
 
 | `b` (s) | `k` | `k / N` |
 |---|---|---|
-| 0.0 | 1200 | 1.000 |
-| 0.2 | 988 | 0.823 |
-| 0.5 | 679 | 0.566 |
-| 1.0 | 472 | 0.393 |
-| 2.0 | 325 | 0.271 |
-| 4.0 | 212 | 0.177 |
-| 6.0 | 163 | 0.136 |
+| 0.0 | 3840 | 1.000 |
+| 0.1 | 3717 | 0.968 |
+| 0.2 | 3298 | 0.859 |
+| 0.4 | 2874 | 0.748 |
+| 0.7 | 2563 | 0.667 |
+| 1.0 | 2392 | 0.623 |
+| 1.5 | 2211 | 0.576 |
+| 2.0 | 2100 | 0.547 |
+| 3.0 | 1933 | 0.503 |
+| 4.0 | 1784 | 0.465 |
+| 6.0 | 1492 | 0.389 |
 
-These counts were computed on a shortened 1200-sample trace rather than on the
-full 3840-sample window, for the practical reason that the singular value
-decomposition requires the dense operator and the dense operator at full length
-does not fit in working memory on the hardware used. The fractions are what the
-table is for, and they are what the criterion needs: at `b` = 1 s under 40 per
-cent of the signal directions still carry information, and at `b` = 6 s under 14
-per cent do.
+These counts are computed on the full 3840-sample analysis window with the
+default eight movement bursts, which is the configuration every other number in
+this document uses. The window length matters more than it looks: the same sweep
+on a shortened 1200-sample trace gives 0.136 at `b` = 6 s rather than 0.389,
+because a shorter window holds fewer small singular values to begin with. A
+table of this kind is therefore only comparable against others computed on the
+same window and the same movement model, and an earlier version of this
+measurement was not. That version used a 60-second window with two bursts
+instead of eight, which leaves 47.6 per cent of the samples at a severity below
+0.05 so that nearly half the rows of `A` stay close to the identity, against 3.1
+per cent with eight bursts; the mean severity is almost the same either way,
+0.265 against 0.272, so what changes is the distribution of movement in time
+rather than its amount.
 
 Something important follows from this table when it is read against the next
 one, and it belongs here rather than being left for the reader to notice. The
@@ -631,7 +645,7 @@ error:
 | RMSE at `β` = 0 (µS) | 0.0100 | 0.0101 | 0.0101 | 0.0102 | 0.0105 | 0.0109 | 0.0117 | 0.0126 | 0.0144 | 0.0162 | 0.0190 |
 
 The error roughly doubles across a range over which the effective rank falls by
-a factor of seven, and at its worst it reaches 0.0190 µS, which is less than a
+a factor of 2.6, and at its worst it reaches 0.0190 µS, which is less than a
 quarter of the 0.08 µS tolerance that defines the label. Under this model the
 blur destroys a great deal of information, and almost none of the measurable
 error comes from that destruction; the error is produced by the additive term
@@ -655,22 +669,22 @@ The first stage removes the component of the recording that is locked to the
 movement envelope, by ordinary least squares on a two-column design:
 
 ```
-X  = [ e , 1 ]
-ĉ  = argmin_c || X c − y ||²
-y₁ = y − X ĉ + ĉ₀ = y − ĉ₁ e
+X     = [ e , 1 ]
+c_hat = argmin_c || X c - y ||^2
+y_1   = y - X c_hat + c_hat_0 = y - c_hat_1 e
 ```
 
 The intercept is subtracted and then added back, which is what the third line
-records: the operation reduces to removing `ĉ₁ e` and leaving the tonic level in
+records: the operation reduces to removing `c_hat_1 e` and leaving the tonic level in
 place. Removing the intercept as well would strip the mean conductance, and the
 mean conductance is part of the signal.
 
 | Symbol | Meaning | Unit | Source |
 |---|---|---|---|
 | `X` | design matrix, `N × 2` | mixed | the envelope and a constant column |
-| `ĉ₁` | fitted envelope coefficient | µS per unit of envelope | `np.linalg.lstsq` |
-| `ĉ₀` | fitted intercept | µS | `np.linalg.lstsq` |
-| `y₁` | recording with the additive trace removed | µS | computed |
+| `c_hat_1` | fitted envelope coefficient | µS per unit of envelope | `np.linalg.lstsq` |
+| `c_hat_0` | fitted intercept | µS | `np.linalg.lstsq` |
+| `y_1` | recording with the additive trace removed | µS | computed |
 
 ### 10.2 Stage two, inverting the blur
 
@@ -678,40 +692,40 @@ The second stage inverts the blur operator by Tikhonov regularisation with a
 second-difference penalty,
 
 ```
-ŝ(λ) = argmin_s { || A s − y₁ ||² + λ² || L s ||² }
+S_hat(λ) = argmin_s ( || A s - y_1 ||^2 + λ^2 || L s ||^2 )
 ```
 
 solved through the regularised normal equations
 
 ```
-( AᵀA + λ² LᵀL ) ŝ = Aᵀ y₁
+( A^T A + λ^2 L^T L ) S_hat = A^T y_1
 ```
 
 with `scipy.sparse.linalg.spsolve`. The penalty operator `L` is the second
-difference, an `(N−2) × N` sparse matrix whose rows hold the stencil (1, −2, 1),
-so `|| L s ||²` is the summed squared curvature of the estimate, and the penalty
+difference, an `(N-2) × N` sparse matrix whose rows hold the stencil (1, -2, 1),
+so `|| L s ||^2` is the summed squared curvature of the estimate, and the penalty
 suppresses the high-frequency oscillation that an unregularised inversion of a
 blur operator produces.
 
 The regularisation parameter is selected by the L-curve criterion of Hansen and
-O'Leary (1993). The residual norm `|| A ŝ(λ) − y₁ ||` and the solution roughness
-`|| L ŝ(λ) ||` are computed at each `λ` on a logarithmic grid, both are taken in
+O'Leary (1993). The residual norm `|| A S_hat(λ) - y_1 ||` and the solution roughness
+`|| L S_hat(λ) ||` are computed at each `λ` on a logarithmic grid, both are taken in
 logarithmic coordinates, and the chosen `λ` is the one at the point of maximum
 curvature of that trajectory, found from finite differences:
 
 ```
-κ(λ) = | r' s'' − s' r'' | / ( r'² + s'² )^{3/2}
+κ(λ) = | r' s'' - s' r'' | / ( r'^2 + s'^2 )^(3/2)
 ```
 
-where `r = ln || A ŝ − y₁ ||` and `s = ln || L ŝ ||`, with the derivatives taken
+where `r = ln || A S_hat - y_1 ||` and `s = ln || L S_hat ||`, with the derivatives taken
 by `np.gradient` over the grid.
 
 | Symbol | Meaning | Unit | Default | Source |
 |---|---|---|---|---|
-| `L` | second-difference penalty | dimensionless | `(N−2) × N` | standard smoothness penalty |
+| `L` | second-difference penalty | dimensionless | `(N-2) × N` | standard smoothness penalty |
 | `λ` | regularisation parameter | dimensionless | selected per run | L-curve, Hansen and O'Leary (1993) |
-| grid | candidate `λ` values | dimensionless | `logspace(−3, 2, 7)` | chosen for this study |
-| `ŝ` | reconstruction | µS | computed | the estimate the error is measured on |
+| grid | candidate `λ` values | dimensionless | `logspace(-3, 2, 7)` | chosen for this study |
+| `S_hat` | reconstruction | µS | computed | the estimate the error is measured on |
 
 Seven grid points is coarse enough to be a limitation in its own right, because
 the corner of the L-curve can only ever be located at one of seven positions, and
@@ -735,8 +749,8 @@ Error is root mean square difference from the known clean signal, computed twice
 per run, once on the recording and once on the reconstruction:
 
 ```
-RMSE_before = sqrt( (1/N) Σ_n ( y(t_n) − s(t_n) )² )
-RMSE_after  = sqrt( (1/N) Σ_n ( ŝ(t_n) − s(t_n) )² )
+RMSE_before = sqrt( (1/N) sum[n] ( y(t_n) - s(t_n) )^2 )
+RMSE_after  = sqrt( (1/N) sum[n] ( S_hat(t_n) - s(t_n) )^2 )
 ```
 
 Both are in microsiemens. `RMSE_before` is the quantity the labels in the next
@@ -753,11 +767,11 @@ A run is labelled as needing correction when its uncorrected error exceeds a
 tolerance:
 
 ```
-label = 1   if RMSE_before > τ
+label = 1   if RMSE_before > δ
 label = 0   otherwise
 ```
 
-with `τ` = 0.08 µS. The tolerance is the author's choice, and the reasoning is
+with `δ` = 0.08 µS. The tolerance is the author's choice, and the reasoning is
 that it sits eight times above the measurement noise standard deviation, so noise
 alone never triggers it, and below the peak amplitude of a mid-sized phasic
 response, so an error large enough to distort a response of interest does trigger
@@ -768,7 +782,7 @@ which the next subsection reports.
 
 | Symbol | Meaning | Unit | Default | Source |
 |---|---|---|---|---|
-| `τ` | error tolerance | µS | 0.08 | chosen; 8 σ_n, and below a mid-sized response peak |
+| `δ` | error tolerance | µS | 0.08 | chosen; 8 σ_n, and below a mid-sized response peak |
 
 Under this tolerance the 66 calibration runs split into 41 labelled as needing
 correction and 25 labelled as not needing it.
@@ -816,10 +830,10 @@ curve is computed with `sklearn.metrics.roc_curve`, which returns the true and
 false positive rates at every candidate cut point, and the selected cut maximises
 
 ```
-J = sensitivity + specificity − 1 = TPR − FPR
+J = sensitivity + specificity - 1 = TPR - FPR
 ```
 
-A window is then corrected when its coherence reaches the threshold, `C_B ≥ θ`,
+A window is then corrected when its coherence reaches the threshold, `C_B >= θ`,
 and left alone otherwise.
 
 The fit on all 66 runs gives
@@ -956,13 +970,13 @@ twice as much.
 
 | true `b` (s) | assumed / true | median RMSE after (µS) | change against the correct operator |
 |---|---|---|---|
-| 1.0 | 0.5 | 0.0671 | −0.4 % |
+| 1.0 | 0.5 | 0.0671 | -0.4 % |
 | 1.0 | 1.0 | 0.0673 | reference |
 | 1.0 | 2.0 | 0.0681 | +1.2 % |
-| 2.0 | 0.5 | 0.0675 | −1.4 % |
+| 2.0 | 0.5 | 0.0675 | -1.4 % |
 | 2.0 | 1.0 | 0.0685 | reference |
 | 2.0 | 2.0 | 0.0721 | +5.2 % |
-| 4.0 | 0.5 | 0.0690 | −4.4 % |
+| 4.0 | 0.5 | 0.0690 | -4.4 % |
 | 4.0 | 1.0 | 0.0722 | reference |
 | 4.0 | 2.0 | 0.0869 | +20.4 % |
 
@@ -1125,7 +1139,7 @@ inversion or change the penalty it uses.
 and 13.1 together make this plain. At `β` = 0 the uncorrected error moves only
 from 0.0100 to 0.0190 µS across the entire blur range, never reaching a quarter
 of the tolerance that defines the label, while the effective rank falls by a
-factor of seven over the same range. The inverse-problem framing is therefore a
+factor of 2.6 over the same range. The inverse-problem framing is therefore a
 description of the model rather than a description of what limits accuracy here,
 and a reader who wants the blur to be the operative difficulty would need a
 regime with far more aggressive smoothing or far less additive contamination.
@@ -1207,6 +1221,54 @@ The numbers in this document were produced under Python 3.14.6, NumPy 2.5.3,
 SciPy 1.18.1 and scikit-learn 1.9.1. The regression tests assert the published
 values to four decimal places, so a future version of any dependency that moves
 them will fail the suite rather than changing the documentation silently.
+
+---
+
+## 16. Corrections to the earlier write-up
+
+An earlier draft of this work circulated before the analysis code was rewritten
+as a tested package. The rewrite surfaced five defects, three of which changed
+printed numbers, and they are collected here so that anybody comparing the two
+versions can see at once which figures moved and why. Each one is also described
+where it belongs in the sections above.
+
+**The effective-rank table was computed under a different movement model from
+the rest of the work.** It came from a 60-second window with two movement bursts,
+while every other figure uses 240-second windows with eight, and the note under
+the table did not record the burst count. Two bursts in a short window leave 47.6
+per cent of the samples at a severity below 0.05, so nearly half the rows of `A`
+stay close to the identity and their singular values do not fall, against 3.1 per
+cent with eight bursts; the mean severity is almost the same either way, 0.265
+against 0.272, so what changed was the distribution of movement in time rather
+than its amount. Section 9 now reports the table on the 240-second window, where
+the surviving fraction at `b` = 6 s is 0.389 rather than the 0.294 previously
+printed for the smaller window.
+
+**The threshold in that count was described as the noise level in
+microsiemens.** It is one per cent of the largest singular value, which is a
+relative quantity that coincides numerically with `σ_n` = 0.01 µS without being
+the same kind of thing. Section 9 now states the relative form. No count changes.
+
+**The response time constants were attributed to a published source that does
+not report them.** Section 4.3 now states that the Bateman form comes from the
+decomposition literature while `τ_1` = 0.75 s and `τ_2` = 2.0 s were chosen here
+to place the peak at 1.18 s and the one per cent return at 11.3 s. The
+attribution has been withdrawn rather than replaced.
+
+**The spectral estimate was described as twelve non-overlapping segments.** The
+routine applies a Hann window with 50 per cent overlap and averages 23
+overlapping segments in a 240-second window. Section 8 now gives both figures and
+explains that 12 is the conservative count of independent averages, because
+overlapping segments share half their samples. No printed value changes.
+
+**The overlap between the random streams of the two generators was not
+documented.** Section 4.5 now describes it in full, including the reason the
+correction has been deferred.
+
+Three measurements were added in the same rewrite and have no counterpart in the
+earlier draft: the coupling sweep of section 13.1, the stage ablation of section
+13.3 and the decimation check of section 13.4. The ablation is unfavourable to
+the method as specified, and section 14 says so.
 
 ---
 
